@@ -31,15 +31,15 @@ Below are the test results:
 
 Tried plotting the data point with `N` as X-axis and `d` as Y-axis, we got the graph below:
 
-<img src="C:\Users\Harry\Downloads\save (2).png" alt="save (2)" style="zoom:50%;" />
+<img src="assignment1.assets\save (2).png" alt="save (2)" style="zoom:50%;" />
 
 It looks like there is a relation but not a perfect linear relation. As the distance formula used square root operation, we can also try using `sqrt(N)` as X-axis and `d` as Y-axis:
 
-<img src="C:\Users\Harry\Downloads\save (3).png" alt="save (3)" style="zoom:50%;" />
+<img src="assignment1.assets\save (3).png" alt="save (3)" style="zoom:50%;" />
 
 This seems like a perfect linear relation, we can use [online linear regression tool](https://www.statskingdom.com/linear-regression-calculator.html) to get the formula. Enter the data points, and we got:
 
-![image-20210917031956553](C:\Users\Harry\AppData\Roaming\Typora\typora-user-images\image-20210917031956553.png)
+<img src="assignment1.assets\image-20210917031956553.png">
 
 ## Code
 
@@ -47,4 +47,4 @@ Only `RandomWalk.java` is modified.
 
 ## Unit tests
 
-![image-20210917034621006](C:\Users\Harry\AppData\Roaming\Typora\typora-user-images\image-20210917034621006.png)
+<img src="assignment1.assets\image-20210917034621006.png">
