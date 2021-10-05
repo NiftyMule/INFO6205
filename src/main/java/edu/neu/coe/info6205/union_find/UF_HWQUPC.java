@@ -112,8 +112,11 @@ public class UF_HWQUPC implements UF {
      *                                  both {@code 0 <= p < n} and {@code 0 <= q < n}
      */
     public void union(int p, int q) {
-        // CONSIDER can we avoid doing find again?
-        mergeComponents(find(p), find(q));
+        int rootP = find(p);
+        int rootQ = find(q);
+        if (rootP == rootQ) return;
+
+        mergeComponents(rootP, rootQ);
         count--;
     }
 

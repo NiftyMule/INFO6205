@@ -18,18 +18,12 @@ public class UF_Experiment {
 
         // initialize UF data structure
         UF uf = new UF_HWQUPC(n, true);
+        Random random = new Random();
 
-        while (uf.components() != 1) {
-            Random random = new Random();
-            int x;
-            int y;
-
+        while (uf.components() > 1) {
             // generate random pairs of integer
-            do {
-                x = random.nextInt(n);
-                y = random.nextInt(n);
-            } while (uf.isConnected(x, y));
-
+            int x = random.nextInt(n);
+            int y = random.nextInt(n);
             // connect these two unconnected sites
             uf.union(x, y);
             operations++;
@@ -40,14 +34,16 @@ public class UF_Experiment {
 
     public static void main(String[] args)
     {
-        int[] Ns = {50, 100, 200, 300, 500};
+        int[] Ns = {1000, 2000, 4000, 8000, 16000, 32000, 64000, 128000, 256000, 512000, 1024000};
         for (int N : Ns)
         {
             System.out.printf("*************** N=%d ***************\n", N);
-            for (int i = 0; i < 5; ++i)
+            long totalOps = 0;
+            for (int i = 0; i < 1000; ++i)
             {
-                System.out.printf("Run %d : %d\n", i, count(N));
+                totalOps += count(N);
             }
+            System.out.println("Mean number of operations: " + totalOps / 1000.0);
         }
     }
 }
