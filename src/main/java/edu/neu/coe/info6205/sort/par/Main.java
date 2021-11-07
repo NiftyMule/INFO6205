@@ -4,86 +4,159 @@ import java.io.BufferedWriter;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Random;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.*;
 import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.TimeUnit;
 
 /**
  * This code has been fleshed out by Ziyao Qiao. Thanks very much.
- * TODO tidy it up a bit.
  */
 public class Main {
 
     public static void main(String[] args) {
-        processArgs(args);
-        System.out.println("Degree of parallelism: " + ForkJoinPool.getCommonPoolParallelism());
-        Random random = new Random();
-        int[] array = new int[2000000];
-        ArrayList<Long> timeList = new ArrayList<>();
-        for (int j = 50; j < 100; j++) {
-            ParSort.cutoff = 10000 * (j + 1);
-            // for (int i = 0; i < array.length; i++) array[i] = random.nextInt(10000000);
-            long time;
-            long startTime = System.currentTimeMillis();
-            for (int t = 0; t < 10; t++) {
-                for (int i = 0; i < array.length; i++) array[i] = random.nextInt(10000000);
-                ParSort.sort(array, 0, array.length);
+        testDepth();
+        testCutoff();
+    }
+
+    /**
+     * Test the parallel sorting performance with different recursion depth
+     */
+    public static void testDepth()
+    {
+        // Determine best thread pool
+        ForkJoinPool myPool = new ForkJoinPool(512);
+        Map<Integer, List<Long>> result = new HashMap<>();
+        int size = 1000000;
+        for (int i = 0; i < 8; i++)
+        {
+            int[] arr = new int[size];
+            result.put(size, new ArrayList<>());
+
+            for (int j = 0; j < 9; j++) {
+                // construct thread pool
+                ParSort.depthLimit = j;
+
+                long avgTime = TimeUnit.NANOSECONDS.toMillis(evaluateSortTime(arr, myPool, 10));
+
+                result.get(size).add(avgTime);
+                System.out.printf("Array size: %d, recursion depth: %d, elapsed time: %d ms \n",
+                        size, ParSort.depthLimit, avgTime);
             }
-            long endTime = System.currentTimeMillis();
-            time = (endTime - startTime);
-            timeList.add(time);
-
-
-            System.out.println("cutoff：" + (ParSort.cutoff) + "\t\t10times Time:" + time + "ms");
-
+            size *= 2;
         }
-        try {
-            FileOutputStream fis = new FileOutputStream("./src/result.csv");
-            OutputStreamWriter isr = new OutputStreamWriter(fis);
-            BufferedWriter bw = new BufferedWriter(isr);
-            int j = 0;
-            for (long i : timeList) {
-                String content = (double) 10000 * (j + 1) / 2000000 + "," + (double) i / 10 + "\n";
-                j++;
-                bw.write(content);
-                bw.flush();
-            }
-            bw.close();
 
+        writeToFile(result, "./src/depth.csv", null);
+    }
+
+    /**
+     * Determine the best cutoff value
+     */
+    public static void testCutoff()
+    {
+        ForkJoinPool myPool = new ForkJoinPool(512);
+
+        // Different array size
+        Map<Integer, List<Long>> result = new HashMap<>();
+
+        // Avoid cutoff as we are comparing performance between system sort and parallel sort
+        ParSort.cutoff = 1;
+
+        // array size loop
+        for (int i = 0; i < 20; ++i)
+        {
+            int n = 200 * (i + 1);
+            int[] array = new int[n];
+            List<Long> timeList = new ArrayList<>();
+
+            ParSort.depthLimit = 1;
+            long avgParSortTime = TimeUnit.NANOSECONDS.toMicros(evaluateSortTime(array, myPool, 2000));
+            System.out.printf("Array size: %d, average ParSort time: %d μs\n", n, avgParSortTime);
+            timeList.add(avgParSortTime);
+
+            ParSort.depthLimit = 0;
+            long avgSysSortTime = TimeUnit.NANOSECONDS.toMicros(evaluateSortTime(array, myPool, 2000));
+            timeList.add(avgSysSortTime);
+            System.out.printf("Array size: %d, average SysSort time: %d μs\n", n, avgSysSortTime);
+
+            long diff = avgParSortTime - avgSysSortTime;
+            System.out.printf("ParSort time - SysSort time: %d\n", diff);
+            timeList.add(diff);
+
+            result.put(n, timeList);
+        }
+
+        writeToFile(result, "./src/cutoff.csv", null);
+    }
+
+    /**
+     * Write experiment results to file
+     * @param filepath - path to file
+     * @param header - column headers
+     */
+    public static void writeToFile(Map<Integer, List<Long>> result, String filepath, String header)
+    {
+        try {
+            FileOutputStream fis = new FileOutputStream(filepath);
+            BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(fis));
+
+            if (header != null)
+            {
+                bw.write(header);
+                bw.newLine();
+            }
+
+            for (int arrSize : result.keySet()) {
+                StringBuilder content = new StringBuilder(Integer.toString(arrSize));
+                for (long elapsed : result.get(arrSize)) {
+                    content.append(",").append(elapsed);
+                }
+                bw.write(content.toString());
+                bw.newLine();
+            }
+
+            bw.flush();
+            bw.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    private static void processArgs(String[] args) {
-        String[] xs = args;
-        while (xs.length > 0)
-            if (xs[0].startsWith("-")) xs = processArg(xs);
+    /**
+     * Fill the array with random numbers
+     * @param arr - array to be filled
+     * @param seed - random seed
+     */
+    public static void fillArrayRandom(int[] arr, int seed)
+    {
+        // to ensure array with same size will have same contents
+        Random random = new Random(seed);
+        for (int i = 0; i < arr.length; ++i)
+        {
+            arr[i] = random.nextInt(50000000);
+        }
     }
 
-    private static String[] processArg(String[] xs) {
-        String[] result = new String[0];
-        System.arraycopy(xs, 2, result, 0, xs.length - 2);
-        processCommand(xs[0], xs[1]);
-        return result;
+    /**
+     * run parallel sort `t` times with given thread pool
+     * @param array - random number container
+     * @param pool - thread pool
+     * @param t - the number of experiments to be run
+     * @return - average elapsed time among `t` runs (in ms)
+     */
+    public static long evaluateSortTime(int[] array, ForkJoinPool pool, int t)
+    {
+        long totalTime = 0;
+
+        for (int i = 0; i < t; i++)
+        {
+            fillArrayRandom(array, array.length + t);
+            Instant startTime = Instant.now();
+            ParSort.sort(array, 0, array.length, pool, 0);
+            Instant endTime = Instant.now();
+            totalTime += Duration.between(startTime, endTime).toNanos();
+        }
+        return totalTime / t;
     }
-
-    private static void processCommand(String x, String y) {
-        if (x.equalsIgnoreCase("N")) setConfig(x, Integer.parseInt(y));
-        else
-            // TODO sort this out
-            if (x.equalsIgnoreCase("P")) //noinspection ResultOfMethodCallIgnored
-                ForkJoinPool.getCommonPoolParallelism();
-    }
-
-    private static void setConfig(String x, int i) {
-        configuration.put(x, i);
-    }
-
-    @SuppressWarnings("MismatchedQueryAndUpdateOfCollection")
-    private static final Map<String, Integer> configuration = new HashMap<>();
-
-
 }
